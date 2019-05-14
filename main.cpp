@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <cstdlib>
 #include <iostream>
 #include <ctime>
 #include <chrono>
@@ -27,8 +28,23 @@ bool checkLua(lua_State* lua, int r)
   return true;
 }
 
+void drawCircle(SDL_Renderer* renderer, int cx, int cy, int radius)
+{
+  for(int x = 0; x < radius * 2; x++)
+  {
+    for(int y = 0; y < radius * 2; y++)
+    {
+      int dx = radius - x;
+      int dy = radius - y;
+      if((dx * dx + dy * dy) <= (radius * radius))
+        SDL_RenderDrawPoint(renderer, cx + dx, cy + dy);
+    }
+  }
+}
+
 int main(int argc, char** argv)
 {
+  srand(time(0));
   std::string inputfile = "";
   if(argc < 2)
   {
@@ -59,7 +75,7 @@ int main(int argc, char** argv)
   int kernal_height = 0;//default: 3
 
   lua_State *lua = luaL_newstate();
-  //luaL_openlibs(lua);
+  luaL_openlibs(lua);
 
   if(checkLua(lua, luaL_dofile(lua, inputfile.c_str())))
   {
@@ -226,6 +242,9 @@ int main(int argc, char** argv)
   int gridx = 0;
   int gridy = 0;
 
+  int currentState = num_of_states - 1; // this is the state that will replace a certain cellon mouse click
+  std::cout << "Selected State: " << currentState << std::endl;
+
   bool drawing = false;
   bool drawn = false;
 
@@ -240,6 +259,8 @@ int main(int argc, char** argv)
 
   while(!quit)
   {
+    //get mouse location
+    SDL_GetMouseState(&mousex, &mousey);
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now(); /*nano time*/
     delta += (now - lastTime).count() / ns;
     lastTime = now;
@@ -260,7 +281,10 @@ int main(int argc, char** argv)
             break;
           case SDL_MOUSEBUTTONUP:
             if(e.button.button == SDL_BUTTON_LEFT)
+            {
               drawing = false;
+              drawn = false;
+            }
             break;
           case SDL_KEYUP:
             switch(e.key.keysym.sym)
@@ -269,13 +293,35 @@ int main(int argc, char** argv)
                 running = !running;
                 std::cout << ((running) ? "Running..." : "Stopped.") << std::endl;
                 break;
-              case SDLK_r:
-                std::cout << "Reset" << std::endl;
+              case SDLK_c:
+                std::cout << "Clearing Screen..." << std::endl;
                 for(int i = 0; i < cell_w; i++)
                 {
                   memset(nextgrid[i], 0, sizeof(int) * cell_h);
                   memset(grid[i], 0, sizeof(int) * cell_h);
                 }
+                break;
+              case SDLK_r:
+                std::cout << "Randomly Initializing..." << std::endl;
+                for(int x = 0; x < cell_w; x++)
+                {
+                  for(int y =  0; y < cell_h; y++)
+                  {
+                    nextgrid[x][y] = (rand() % num_of_states);
+                  }
+                }
+                break;
+              case SDLK_RIGHT:
+              case SDLK_UP:
+                currentState = currentState + 1;
+                if(currentState >= num_of_states) currentState = 0;
+                std::cout << "Selected State: " << currentState << std::endl;
+                break;
+              case SDLK_LEFT:
+              case SDLK_DOWN:
+                currentState = currentState - 1;
+                if(currentState < 0) currentState = num_of_states - 1;
+                std::cout << "Selected State: " << currentState << std::endl;
                 break;
               default:
                 break;
@@ -285,8 +331,7 @@ int main(int argc, char** argv)
             break;
         }
       }
-      //grab mouse location and calculate the grid location
-      SDL_GetMouseState(&mousex, &mousey);
+      //calculate the grid location
       int pgridx = gridx;
       int pgridy = gridy;
       gridx = mousex / cell_size;
@@ -296,7 +341,7 @@ int main(int argc, char** argv)
       if(drawing && !drawn)
       {
         //this is here cause we are assuming 2 states for now
-        nextgrid[gridx][gridy] = (grid[gridx][gridy] + 1) % 2;
+        nextgrid[gridx][gridy] = currentState;
         drawn = true;
       }
       for(int x = 0; x < cell_w; x++)
@@ -314,8 +359,8 @@ int main(int argc, char** argv)
           for(int y =  0; y < cell_h; y++)
           {
             //calculate neighbor numbers
-            int* neighbor_counts = (int*)malloc(sizeof(int) * 2);//2 will be replaced by thenumber of states in the future
-            memset(neighbor_counts, 0, sizeof(int) * 2);
+            int* neighbor_counts = (int*)malloc(sizeof(int) * num_of_states);//2 will be replaced by thenumber of states in the future
+            memset(neighbor_counts, 0, sizeof(int) * num_of_states);
 
             int kxoff = -(kernal_width / 2);
             int kyoff = -(kernal_height / 2);
@@ -332,8 +377,8 @@ int main(int argc, char** argv)
 
             lua_getglobal(lua, "process");
             lua_pushinteger(lua, grid[x][y]);//current state argument
-            lua_createtable(lua, 2, 0); //neighbor_counts argument
-            for(int i = 0; i < 2; i++)//2 will be replaced by num of states
+            lua_createtable(lua, num_of_states, 0); //neighbor_counts argument
+            for(int i = 0; i < num_of_states; i++)//2 will be replaced by num of states
             {
               lua_pushinteger(lua, neighbor_counts[i]);
               lua_rawseti(lua, -2, i);
@@ -378,11 +423,21 @@ int main(int argc, char** argv)
         if(grid[x][y] != 0)
         {
           SDL_Rect cell = {x * cell_size, y * cell_size, cell_size, cell_size};
-          SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+          SDL_SetRenderDrawColor(renderer, (int)(0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))),
+                                           (int)(0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))),
+                                           (int)(0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))),
+                                           0xFF);
           SDL_RenderFillRect(renderer, &cell);
         }
       }
     }
+
+    //draw circle around cursor for state
+    SDL_SetRenderDrawColor(renderer, (int)(0xFF * (1 - ((double)currentState / (num_of_states - 1)))),
+                                     (int)(0xFF * (1 - ((double)currentState / (num_of_states - 1)))),
+                                     (int)(0xFF * (1 - ((double)currentState / (num_of_states - 1)))),
+                                     0xFF);
+    drawCircle(renderer, mousex, mousey, 5);
 
     SDL_RenderPresent(renderer);
     //finish rendering
