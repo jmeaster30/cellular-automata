@@ -29,7 +29,7 @@ kernal_height = 3 -- the height of the kernal or neighborhood centered on the cu
 
 updates_per_second = 60 -- this controls how frequently the grid updates
 ```
-Your lua script should also have a function called **process** that takes in two parameters (an integer and an array) and returns an integer.
+Your lua script must contain a function called **process** that takes in two parameters, an integer and an array (in that order), and returns an integer.
 
 Here is how it can look:
 ```lua
