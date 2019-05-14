@@ -7,18 +7,34 @@ You need to pass in a lua script that has the parameters for the cellular automa
 Your lua script should look like this:
 
 >win_title = "Title of the window"
+
 >win_width = 800 -- the width in pixels of the window
+
 >win_height = 800 -- the height in pixels of the window
+
 >cell_size = 40 -- the width and height of one cell (you should make this a divisor of both win_width and win_height otherwise you will get a funky looking grid)
+
 >kernal_width = 3 -- the width of the kernal or neighborhood centered on the current cell
+
 >kernal_height = 3 -- the height of the kernal or neighborhood centered on the current cell
+
 >updates_per_second = 60 -- this controls how frequently the grid updates
+
 >
+
 >--curr_state will be an integer representing the state of the cell being processed
+
 >--neighbor_counts will be an array of length equal to the number of states and each index will contain the number of neighbors of the current cell that have that state
+
 >function process(curr_state, neighbor_counts)
+
 >  local new_state = 0
+
 >  --you can have anything you want in here
+
 >  --as long as you return a number that represents a certain state 
+
 >  return new_state
+
 >end
+
