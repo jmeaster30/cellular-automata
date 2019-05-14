@@ -45,18 +45,18 @@ int main(int argc, char** argv)
     inputfile = argv[1];
   }
 
-  std::string win_title = "Cellular Automata";
+  std::string win_title = "";//default: "Cellular Automata"
 
-  int ups = 60;
+  int ups = 0;//default: 60
 
-  int win_width = 800;
-  int win_height = 600;
-  int cell_size = 20;
+  int win_width = 0;//default: 640
+  int win_height = 0;//default: 480
+  int cell_size = 0;//default: 20
 
-  int num_of_states = 2;
+  int num_of_states = 0;//default: 2
 
-  int kernal_width = 3;
-  int kernal_height = 3;
+  int kernal_width = 0;//default: 3
+  int kernal_height = 0;//default: 3
 
   lua_State *lua = luaL_newstate();
   //luaL_openlibs(lua);
@@ -64,53 +64,102 @@ int main(int argc, char** argv)
   if(checkLua(lua, luaL_dofile(lua, inputfile.c_str())))
   {
     std::cout << "Lua file loaded successfully!!!" << std::endl;
-    lua_getglobal(lua, "win_title");
-    if(lua_isstring(lua, -1))
-      win_title = lua_tostring(lua, -1);
+    if(lua_getglobal(lua, "win_title") != 0)
+    {
+      if(lua_isstring(lua, -1))
+        win_title = lua_tostring(lua, -1);
+      else
+        std::cout << "Error reading in variable 'win_title'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'win_title'!" << std::endl;
+    {
+      win_title = "Cellular Automata";
+    }
 
-    lua_getglobal(lua, "updates_per_second");
-    if(lua_isnumber(lua, -1))
-      ups = (int)lua_tonumber(lua, -1);
+    if(lua_getglobal(lua, "updates_per_second") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        ups = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'updates_per_second'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'updates_per_second'!" << std::endl;
+    {
+      ups = 60;
+    }
 
-    lua_getglobal(lua, "win_width");
-    if(lua_isnumber(lua, -1))
-      win_width = (int)lua_tonumber(lua, -1);
+    if(lua_getglobal(lua, "win_width") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        win_width = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'win_width'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'win_width'!" << std::endl;
+    {
+      win_width = 640;
+    }
 
-    lua_getglobal(lua, "win_height");
-    if(lua_isnumber(lua, -1))
-      win_height = (int)lua_tonumber(lua, -1);
+
+    if(lua_getglobal(lua, "win_height") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        win_height = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'win_height'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'win_height'!" << std::endl;
+    {
+      win_height = 480;
+    }
 
-    lua_getglobal(lua, "cell_size");
-    if(lua_isnumber(lua, -1))
-      cell_size = (int)lua_tonumber(lua, -1);
+    if(lua_getglobal(lua, "cell_size") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        cell_size = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'cell_size'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'cell_size'!" << std::endl;
+    {
+      cell_size = 20;
+    }
 
-    //lua_getglobal(lua, "num_of_states");
-    //if(lua_isnumber(lua, -1))
-    //  num_of_states = (int)lua_tonumber(lua, -1);
-    //else
-    //  std::cout << "Error reading in variable 'num_of_states'!" << std::endl;
-
-    lua_getglobal(lua, "kernal_width");
-    if(lua_isnumber(lua, -1))
-      kernal_width = (int)lua_tonumber(lua, -1);
+    if(lua_getglobal(lua, "num_of_states") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        num_of_states = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'num_of_states'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'kernal_width'!" << std::endl;
+    {
+      num_of_states = 2;
+    }
 
-    lua_getglobal(lua, "kernal_height");
-    if(lua_isnumber(lua, -1))
-      kernal_height = (int)lua_tonumber(lua, -1);
+    if(lua_getglobal(lua, "kernal_width") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        kernal_width = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'kernal_width'!" << std::endl;
+    }
     else
-      std::cout << "Error reading in variable 'kernal_height'!" << std::endl;
+    {
+      kernal_width = 3;
+    }
+
+    if(lua_getglobal(lua, "kernal_height") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        kernal_height = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'kernal_height'!" << std::endl;
+    }
+    else
+    {
+      kernal_height = 3;
+    }
   }
   else
   {

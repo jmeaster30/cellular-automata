@@ -1,10 +1,4 @@
 win_title = "Conway's Game Of Life"
-win_width = 800
-win_height = 800
-cell_size = 25
-kernal_width = 3
-kernal_height = 3
-updates_per_second = 30;
 
 function process(curr_state, neighbor_counts)
   local new_state = 0
