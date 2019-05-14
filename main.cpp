@@ -47,9 +47,16 @@ int main(int argc, char** argv)
 
   std::string win_title = "Cellular Automata";
 
+  int ups = 60;
+
   int win_width = 800;
   int win_height = 600;
   int cell_size = 20;
+
+  int num_of_states = 2;
+
+  int kernal_width = 3;
+  int kernal_height = 3;
 
   lua_State *lua = luaL_newstate();
   //luaL_openlibs(lua);
@@ -62,6 +69,12 @@ int main(int argc, char** argv)
       win_title = lua_tostring(lua, -1);
     else
       std::cout << "Error reading in variable 'win_title'!" << std::endl;
+
+    lua_getglobal(lua, "updates_per_second");
+    if(lua_isnumber(lua, -1))
+      ups = (int)lua_tonumber(lua, -1);
+    else
+      std::cout << "Error reading in variable 'updates_per_second'!" << std::endl;
 
     lua_getglobal(lua, "win_width");
     if(lua_isnumber(lua, -1))
@@ -80,23 +93,51 @@ int main(int argc, char** argv)
       cell_size = (int)lua_tonumber(lua, -1);
     else
       std::cout << "Error reading in variable 'cell_size'!" << std::endl;
+
+    //lua_getglobal(lua, "num_of_states");
+    //if(lua_isnumber(lua, -1))
+    //  num_of_states = (int)lua_tonumber(lua, -1);
+    //else
+    //  std::cout << "Error reading in variable 'num_of_states'!" << std::endl;
+
+    lua_getglobal(lua, "kernal_width");
+    if(lua_isnumber(lua, -1))
+      kernal_width = (int)lua_tonumber(lua, -1);
+    else
+      std::cout << "Error reading in variable 'kernal_width'!" << std::endl;
+
+    lua_getglobal(lua, "kernal_height");
+    if(lua_isnumber(lua, -1))
+      kernal_height = (int)lua_tonumber(lua, -1);
+    else
+      std::cout << "Error reading in variable 'kernal_height'!" << std::endl;
   }
   else
   {
     std::cout << "There was a problem loading the lua file :(" << std::endl;
   }
 
-
   int cell_w = win_width / cell_size;
   int cell_h = win_height / cell_size;
+
   //grid[x][y]
   //where 0 <= x <= cell_w
   //where 0 <= y <= cell_h
-  char** grid = (char**)malloc(sizeof(char*) * cell_w);
+  int** grid = (int**)malloc(sizeof(int*) * cell_w);
   for(int i = 0; i < cell_w; i++)
   {
-    grid[i] = (char*)malloc(sizeof(char) * cell_h);
-    memset(grid[i], 0, sizeof(char) * cell_h);
+    grid[i] = (int*)malloc(sizeof(int) * cell_h);
+    memset(grid[i], 0, sizeof(int) * cell_h);
+  }
+
+  //nextgrid[x][y]
+  //where 0 <= x <= cell_w
+  //where 0 <= y <= cell_h
+  int** nextgrid = (int**)malloc(sizeof(int*) * cell_w);
+  for(int i = 0; i < cell_w; i++)
+  {
+    nextgrid[i] = (int*)malloc(sizeof(int) * cell_h);
+    memset(nextgrid[i], 0, sizeof(int) * cell_h);
   }
 
   //initialize SDL stuff
@@ -143,46 +184,135 @@ int main(int argc, char** argv)
 
   //main loop
   int quit = 0;
+
+  std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now(); /*nano time*/
+  double ns = 1000000000.0 / 60.0;
+  double delta = 0;
+
   while(!quit)
   {
-    //grab inputs
-    SDL_Event e;
-    while(SDL_PollEvent(&e))
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now(); /*nano time*/
+    delta += (now - lastTime).count() / ns;
+    lastTime = now;
+    while(delta >= 1)
     {
-      switch(e.type)
+      //grab inputs
+      SDL_Event e;
+      while(SDL_PollEvent(&e))
       {
-        case SDL_QUIT://close window
-          quit = 1;
-          break;
-        case SDL_MOUSEBUTTONDOWN:
-          if(e.button.button == SDL_BUTTON_LEFT)//on left click
-            drawing = true;
-          break;
-        case SDL_MOUSEBUTTONUP:
-          if(e.button.button == SDL_BUTTON_LEFT)
-            drawing = false;
-          break;
-        case SDL_KEYUP:
-          if(e.key.keysym.sym == SDLK_SPACE)
-            running = !running;
-          break;
-        default:
-          break;
+        switch(e.type)
+        {
+          case SDL_QUIT://close window
+            quit = 1;
+            break;
+          case SDL_MOUSEBUTTONDOWN:
+            if(e.button.button == SDL_BUTTON_LEFT)//on left click
+              drawing = true;
+            break;
+          case SDL_MOUSEBUTTONUP:
+            if(e.button.button == SDL_BUTTON_LEFT)
+              drawing = false;
+            break;
+          case SDL_KEYUP:
+            switch(e.key.keysym.sym)
+            {
+              case SDLK_SPACE:
+                running = !running;
+                std::cout << ((running) ? "Running..." : "Stopped.") << std::endl;
+                break;
+              case SDLK_r:
+                std::cout << "Reset" << std::endl;
+                for(int i = 0; i < cell_w; i++)
+                {
+                  memset(nextgrid[i], 0, sizeof(int) * cell_h);
+                  memset(grid[i], 0, sizeof(int) * cell_h);
+                }
+                break;
+              default:
+                break;
+            }
+            break;
+          default:
+            break;
+        }
       }
+      //grab mouse location and calculate the grid location
+      SDL_GetMouseState(&mousex, &mousey);
+      int pgridx = gridx;
+      int pgridy = gridy;
+      gridx = mousex / cell_size;
+      gridy = mousey / cell_size;
+      if(pgridx != gridx || pgridy != gridy) drawn = false;
+      //std::cout << gridx << ", " << gridy << "(" << ((drawing)?"y":"n") << ")" << std::endl;
+      if(drawing && !drawn)
+      {
+        //this is here cause we are assuming 2 states for now
+        nextgrid[gridx][gridy] = (grid[gridx][gridy] + 1) % 2;
+        drawn = true;
+      }
+      for(int x = 0; x < cell_w; x++)
+      {
+        for(int y =  0; y < cell_h; y++)
+        {
+          grid[x][y] = nextgrid[x][y];
+        }
+      }
+      //calculate next grid
+      if(running)
+      {
+        for(int x = 0; x < cell_w; x++)
+        {
+          for(int y =  0; y < cell_h; y++)
+          {
+            //calculate neighbor numbers
+            int* neighbor_counts = (int*)malloc(sizeof(int) * 2);//2 will be replaced by thenumber of states in the future
+            memset(neighbor_counts, 0, sizeof(int) * 2);
+
+            int kxoff = -(kernal_width / 2);
+            int kyoff = -(kernal_height / 2);
+            for(int kx = 0; kx < kernal_width; kx++)
+            {
+              for(int ky = 0; ky < kernal_height; ky++)
+              {
+                int ix = (((x + kx + kxoff) % cell_w) + cell_w) % cell_w; //probably unnecessary parentheses but it makes the order clear
+                int iy = (((y + ky + kyoff) % cell_h) + cell_h) % cell_h;
+                if(ix == x && iy == y) continue;//dont count cell we are looking at
+                neighbor_counts[grid[ix][iy]]++;
+              }
+            }
+
+            lua_getglobal(lua, "process");
+            lua_pushinteger(lua, grid[x][y]);//current state argument
+            lua_createtable(lua, 2, 0); //neighbor_counts argument
+            for(int i = 0; i < 2; i++)//2 will be replaced by num of states
+            {
+              lua_pushinteger(lua, neighbor_counts[i]);
+              lua_rawseti(lua, -2, i);
+            }
+
+            if(checkLua(lua, lua_pcall(lua, 2, 1, 0)))
+            {
+              //top of the stack has the new state
+              if(lua_isnumber(lua, -1))
+              {
+                nextgrid[x][y] = lua_tonumber(lua, -1);
+                lua_pop(lua, 1);
+              }
+              else
+              {
+                std::cout << "Error reading result from process function!" << std::endl;
+              }
+            }
+            else
+            {
+              std::cout << "uhoh bad time" << std::endl;
+            }
+          }
+        }
+      }
+      delta--;
     }
-    //grab mouse location and calculate the grid location
-    SDL_GetMouseState(&mousex, &mousey);
-    int pgridx = gridx;
-    int pgridy = gridy;
-    gridx = mousex / cell_size;
-    gridy = mousey / cell_size;
-    if(pgridx != gridx || pgridy != gridy) drawn = false;
-    //std::cout << gridx << ", " << gridy << "(" << ((drawing)?"y":"n") << ")" << std::endl;
-    if(drawing && !drawn)
-    {
-      grid[gridx][gridy] = !grid[gridx][gridy];
-      drawn = true;
-    }
+
     //do rendering
     SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(renderer);
@@ -195,7 +325,8 @@ int main(int argc, char** argv)
       {
         //draw line only once
         if(x == 0) SDL_RenderDrawLine(renderer, 0, y * cell_size, win_width, y * cell_size);
-        if(grid[x][y] != '\0')
+        //draw cell if the cell is not in state 0 will change when adding multiple states
+        if(grid[x][y] != 0)
         {
           SDL_Rect cell = {x * cell_size, y * cell_size, cell_size, cell_size};
           SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
