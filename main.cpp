@@ -9,12 +9,40 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 
+extern "C"
+{
+  #include <lua.h>
+  #include <lauxlib.h>
+  #include <lualib.h>
+}
+
+bool checkLua(lua_State* lua, int r)
+{
+  if(r != LUA_OK)
+  {
+    std::string err = lua_tostring(lua, -1);
+    std::cout << err << std::endl;
+    return false;
+  }
+  return true;
+}
+
 int main(int argc, char** argv)
 {
-  if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
+  std::string inputfile = "";
+  if(argc < 2)
   {
-    printf("ERROR %s: SDL Initialization Failed!\n", SDL_GetError());
+    std::cout << "too few arguments: please specify a lua file that contains the settings and rules for the automata" << std::endl;
     return -1;
+  }
+  else if(argc > 2)
+  {
+    std::cout << "too many arguments: please specify a lua file that contains the settings and rules for the automata" << std::endl;
+    return -1;
+  }
+  else
+  {
+    inputfile = argv[1];
   }
 
   std::string win_title = "Cellular Automata";
@@ -23,9 +51,44 @@ int main(int argc, char** argv)
   int win_height = 600;
   int cell_size = 20;
 
+  lua_State *lua = luaL_newstate();
+  //luaL_openlibs(lua);
+
+  if(checkLua(lua, luaL_dofile(lua, inputfile.c_str())))
+  {
+    std::cout << "Lua file loaded successfully!!!" << std::endl;
+    lua_getglobal(lua, "win_title");
+    if(lua_isstring(lua, -1))
+      win_title = lua_tostring(lua, -1);
+    else
+      std::cout << "Error reading in variable 'win_title'!" << std::endl;
+
+    lua_getglobal(lua, "win_width");
+    if(lua_isnumber(lua, -1))
+      win_width = (int)lua_tonumber(lua, -1);
+    else
+      std::cout << "Error reading in variable 'win_width'!" << std::endl;
+
+    lua_getglobal(lua, "win_height");
+    if(lua_isnumber(lua, -1))
+      win_height = (int)lua_tonumber(lua, -1);
+    else
+      std::cout << "Error reading in variable 'win_height'!" << std::endl;
+
+    lua_getglobal(lua, "cell_size");
+    if(lua_isnumber(lua, -1))
+      cell_size = (int)lua_tonumber(lua, -1);
+    else
+      std::cout << "Error reading in variable 'cell_size'!" << std::endl;
+  }
+  else
+  {
+    std::cout << "There was a problem loading the lua file :(" << std::endl;
+  }
+
+
   int cell_w = win_width / cell_size;
   int cell_h = win_height / cell_size;
-
   //grid[x][y]
   //where 0 <= x <= cell_w
   //where 0 <= y <= cell_h
@@ -36,6 +99,12 @@ int main(int argc, char** argv)
     memset(grid[i], 0, sizeof(char) * cell_h);
   }
 
+  //initialize SDL stuff
+  if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
+  {
+    std::cout << "ERROR " << SDL_GetError() << ": SDL Initialization Failed!" << std::endl;
+    return -1;
+  }
 
   //initialize the window
   SDL_Window* window = SDL_CreateWindow(win_title.c_str(),
@@ -44,7 +113,8 @@ int main(int argc, char** argv)
                                         win_width, win_height, 0);
   if(!window)
   {
-    printf("ERROR %s: SDL Window Creation Failed!\n", SDL_GetError());
+    std::cout << "ERROR " << SDL_GetError() << ": SDL Window Creation Failed!" << std::endl;
+    lua_close(lua);
     SDL_Quit();
     return -1;
   }
@@ -53,7 +123,8 @@ int main(int argc, char** argv)
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   if(!renderer)
   {
-    printf("Error %s: SDL Renderer Creation Failed!", SDL_GetError());
+    std::cout << "ERROR " << SDL_GetError() << ": SDL Renderer Creation Failed!" << std::endl;
+    lua_close(lua);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return -1;
@@ -67,6 +138,8 @@ int main(int argc, char** argv)
 
   bool drawing = false;
   bool drawn = false;
+
+  bool running = false;
 
   //main loop
   int quit = 0;
@@ -88,6 +161,10 @@ int main(int argc, char** argv)
         case SDL_MOUSEBUTTONUP:
           if(e.button.button == SDL_BUTTON_LEFT)
             drawing = false;
+          break;
+        case SDL_KEYUP:
+          if(e.key.keysym.sym == SDLK_SPACE)
+            running = !running;
           break;
         default:
           break;
@@ -131,6 +208,7 @@ int main(int argc, char** argv)
     //finish rendering
   }
 
+  lua_close(lua);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();
