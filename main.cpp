@@ -390,7 +390,8 @@ int main(int argc, char** argv)
               if(lua_isnumber(lua, -1))
               {
                 //makes sure the return value is a valid state
-                nextgrid[x][y] = ((lua_tonumber(lua, -1) % num_of_states) + num_of_states) % num_of_states;
+                int new_state = (int)(lua_tonumber(lua, -1));
+                nextgrid[x][y] = ((new_state % num_of_states) + num_of_states) % num_of_states;
                 lua_pop(lua, 1);
               }
               else
