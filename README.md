@@ -8,6 +8,7 @@ Arrow Keys - Changes the selected state
 Left Click - Sets the cell that the mouse is over to the selected state
 C - sets every cell to state zero
 R - sets every cell to a random state
+S - performs the automaton calculation once
 Space - Starts and Stops the simulation
 ```
 
