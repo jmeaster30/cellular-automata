@@ -243,12 +243,13 @@ int main(int argc, char** argv)
   int gridy = 0;
 
   int currentState = num_of_states - 1; // this is the state that will replace a certain cellon mouse click
-  std::cout << "Selected State: " << currentState << std::endl;
+  //std::cout << "Selected State: " << currentState << std::endl;
 
   bool drawing = false;
   bool drawn = false;
 
   bool running = false;
+  bool step = false;
 
   //main loop
   int quit = 0;
@@ -291,10 +292,13 @@ int main(int argc, char** argv)
             {
               case SDLK_SPACE:
                 running = !running;
-                std::cout << ((running) ? "Running..." : "Stopped.") << std::endl;
+                std::cout << ((running) ? "Running" : "Stopped") << std::endl;
+                break;
+              case SDLK_s:
+                step = true;
                 break;
               case SDLK_c:
-                std::cout << "Clearing Screen..." << std::endl;
+                //std::cout << "Clearing Screen..." << std::endl;
                 for(int i = 0; i < cell_w; i++)
                 {
                   memset(nextgrid[i], 0, sizeof(int) * cell_h);
@@ -302,7 +306,7 @@ int main(int argc, char** argv)
                 }
                 break;
               case SDLK_r:
-                std::cout << "Randomly Initializing..." << std::endl;
+                //std::cout << "Randomly Initializing..." << std::endl;
                 for(int x = 0; x < cell_w; x++)
                 {
                   for(int y =  0; y < cell_h; y++)
@@ -315,13 +319,13 @@ int main(int argc, char** argv)
               case SDLK_UP:
                 currentState = currentState + 1;
                 if(currentState >= num_of_states) currentState = 0;
-                std::cout << "Selected State: " << currentState << std::endl;
+                //std::cout << "Selected State: " << currentState << std::endl;
                 break;
               case SDLK_LEFT:
               case SDLK_DOWN:
                 currentState = currentState - 1;
                 if(currentState < 0) currentState = num_of_states - 1;
-                std::cout << "Selected State: " << currentState << std::endl;
+                //std::cout << "Selected State: " << currentState << std::endl;
                 break;
               default:
                 break;
@@ -352,7 +356,7 @@ int main(int argc, char** argv)
         }
       }
       //calculate next grid
-      if(running)
+      if(running || step)
       {
         for(int x = 0; x < cell_w; x++)
         {
@@ -412,15 +416,20 @@ int main(int argc, char** argv)
     //do rendering
     SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(renderer);
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+    //SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
     for(int x = 0; x < cell_w; x++)
     {
+      SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
       //draw vertical line
       SDL_RenderDrawLine(renderer, x * cell_size, 0, x * cell_size, win_height);
       for(int y =  0; y < cell_h; y++)
       {
         //draw line only once
-        if(x == 0) SDL_RenderDrawLine(renderer, 0, y * cell_size, win_width, y * cell_size);
+        if(x == 0)
+        {
+          SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+          SDL_RenderDrawLine(renderer, 0, y * cell_size, win_width, y * cell_size);
+        }
         //draw cell if the cell is not in state 0 will change when adding multiple states
         if(grid[x][y] != 0)
         {
@@ -443,6 +452,7 @@ int main(int argc, char** argv)
 
     SDL_RenderPresent(renderer);
     //finish rendering
+    if(step) step = false;
   }
 
   lua_close(lua);

@@ -5,6 +5,8 @@ win_height = 800
 cell_size = 20
 num_of_states = 3
 
+updates_per_second = 10
+
 kernal_width = 3
 kernal_height = 3
 
