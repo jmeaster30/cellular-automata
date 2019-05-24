@@ -1,7 +1,7 @@
 PROG = casim
 CC = g++
 CPPFLAGS = -W -Wall -g -I/usr/local/include
-LDFLAGS =  -Wl,--copy-dt-needed-entries -L/usr/local/lib -lGL -llua
+LDFLAGS =  -Wl,--copy-dt-needed-entries -lGLU -lglut -L/usr/local/lib -llua
 OBJS = main.o
 
 $(PROG) : $(OBJS)
