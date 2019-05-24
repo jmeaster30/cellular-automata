@@ -7,8 +7,9 @@
 #include <chrono>
 #include <string>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_timer.h>
+#include <GL/glut.h>
+//#include <SDL2/SDL.h>
+//#include <SDL2/SDL_timer.h>
 
 extern "C"
 {
