@@ -55,6 +55,10 @@ bool drawing = false;
 bool drawn = false;
 
 //camera variables
+int fov = 45;
+int near = 1;
+int far = 2000;
+
 float camerax = 320;
 float cameray = 240;
 float cameraz = -500;
@@ -109,7 +113,7 @@ void changeSize(int w, int h)
   glLoadIdentity();
 
   glViewport(0, 0, w, h);
-  gluPerspective(45, ratio, 1, 1000);
+  gluPerspective(fov, ratio, near, far);
 
   glMatrixMode(GL_MODELVIEW);
 }
@@ -147,7 +151,7 @@ void renderScene(void)
       cameray += dy;
       cameraz += dz;
       if(cameraz > 0) cameraz = 0;
-      std::cout << camerax << ", " << cameray << ", " << cameraz << std::endl;
+      //std::cout << camerax << ", " << cameray << ", " << cameraz << std::endl;
     }
 
     //if drawing && ! drawn
@@ -220,6 +224,7 @@ void renderScene(void)
           }
         }
       }
+      step = false;
     }
     //finsih update
     delta--;
@@ -328,6 +333,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     default:
       break;
   }
+  key = x + y;
 }
 
 void processNormalKeysUp(unsigned char key, int x, int y)
@@ -345,6 +351,7 @@ void processNormalKeysUp(unsigned char key, int x, int y)
     default:
       break;
   }
+  key = x + y;
 }
 
 void processSpecialKeys(int key, int x, int y)
@@ -367,11 +374,7 @@ void processSpecialKeys(int key, int x, int y)
     default:
       break;
   }
-}
-
-void processSpecialKeysUp(int key, int x, int y)
-{
-
+  key = x + y;
 }
 
 void processMouse(int button, int state, int x, int y)
@@ -404,6 +407,7 @@ void processMouse(int button, int state, int x, int y)
     default:
       break;
   }
+  button = x + y;
 }
 
 void processMotion(int x, int y)
@@ -415,7 +419,7 @@ void processMotion(int x, int y)
   GLint viewport[4];
   GLdouble modelview[16];
   GLdouble projection[16];
-  GLfloat winx, winy, winz;
+  GLfloat winx, winy;
   GLdouble worx, wory, worz;
   GLdouble worx1, wory1, worz1;
 
@@ -510,7 +514,7 @@ int main(int argc, char** argv)
     {
       ups = 60;
     }
-    double ns = 1000000000.0 / ups;
+    ns = 1000000000.0 / ups;
 
     if(lua_getglobal(lua, "win_width") != 0)
     {
@@ -628,12 +632,28 @@ int main(int argc, char** argv)
   glutReshapeFunc(changeSize);
   glutIdleFunc(renderScene); //when there is nothing to be processed call this function
 
+  far = cell_w * cell_size * 4;
+  //set camera
+  if(win_height == 0) win_height = 1;
+  float ratio = 1.0 * win_width / win_height;
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+
+  glViewport(0, 0, win_width, win_height);
+  gluPerspective(fov, ratio, near, far);
+
+  glMatrixMode(GL_MODELVIEW);
+
+  camerax = (cell_w * cell_size) / 2.0f;
+  cameray = (cell_h * cell_size) / 2.0f;
+  cameraz = cell_w * cell_size * -0.9f;
+
   //keyboard and mouse events
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processNormalKeysUp);
   glutSpecialFunc(processSpecialKeys);
   glutIgnoreKeyRepeat(1);
-  glutSpecialUpFunc(processSpecialKeysUp);
 
   glutMouseFunc(processMouse);
   glutMotionFunc(processMotion);
