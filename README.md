@@ -1,10 +1,12 @@
 # cellular-automata
 
-This is a cellular automata simulator that is run from the command line but uses SDL2 for drawing to the screen.
+This is a cellular automata simulator that is run from the command line but uses OpenGL for drawing to the screen.
 
 There are controls to help simulate your cellular automata:
 ```
 Arrow Keys - Changes the selected state
+WASD - Moves camera up, left, down, and right
+Mouse Scroll - Zoom the camera in and out
 Left Click - Sets the cell that the mouse is over to the selected state
 C - sets every cell to state zero
 R - sets every cell to a random state
@@ -12,7 +14,13 @@ S - performs the automaton calculation once
 Space - Starts and Stops the simulation
 ```
 
-You need to pass in a lua script that has the parameters for the cellular automata. The file conwaysgol.lua is a lua script that implements the rules for Conway's Game of Life.
+You need to pass in a lua script that has the parameters for the cellular automata. In the automata folder are premade cellular automaton rules.
+```
+conwaysgol.lua  -> implements the rules for Conway's Game of Life.
+brainsbrain.lua -> implements the rules for Brian's Brain.
+wireworld.lua   -> implements the rules for Wire World
+3staterules.lua -> implements the rules for a cellular automaton that I used for testing
+```
 
 Your lua script can contain these variables but they aren't required (the values given are the default values):
 ```lua
