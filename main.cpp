@@ -82,6 +82,9 @@ double delta = 0;
 int mousex = 0;
 int mousey = 0;
 
+int mouseGridX = -1;
+int mouseGridY = -1;
+
 float mouseGlobalX = 0.0f;
 float mouseGlobalY = 0.0f;
 float mouseGlobalZ = 0.0f;
@@ -147,13 +150,11 @@ void renderScene(void)
       std::cout << camerax << ", " << cameray << ", " << cameraz << std::endl;
     }
 
-    //calculate grid location of the mouse
-
-
     //if drawing && ! drawn
     if(drawing && !drawn)
     {
-      //nextgrid[gridx][gridy] = currentState;
+      if(mouseGridX != -1 && mouseGridY != -1)
+        nextgrid[mouseGridX][mouseGridY] = currentState;
       drawn = true;
     }
     //copy nextgrid->grid
@@ -168,7 +169,57 @@ void renderScene(void)
     //if running || step
     if(running || step)
     {
+      for(int x = 0; x < cell_w; x++)
+      {
+        for(int y =  0; y < cell_h; y++)
+        {
+          //calculate neighbor numbers
+          int* neighbor_counts = (int*)malloc(sizeof(int) * num_of_states);//2 will be replaced by thenumber of states in the future
+          memset(neighbor_counts, 0, sizeof(int) * num_of_states);
 
+          int kxoff = -(kernal_width / 2);
+          int kyoff = -(kernal_height / 2);
+          for(int kx = 0; kx < kernal_width; kx++)
+          {
+            for(int ky = 0; ky < kernal_height; ky++)
+            {
+              int ix = (((x + kx + kxoff) % cell_w) + cell_w) % cell_w; //probably unnecessary parentheses but it makes the order clear
+              int iy = (((y + ky + kyoff) % cell_h) + cell_h) % cell_h;
+              if(ix == x && iy == y) continue;//dont count cell we are looking at
+              neighbor_counts[grid[ix][iy]]++;
+            }
+          }
+
+          lua_getglobal(lua, "process");
+          lua_pushinteger(lua, grid[x][y]);//current state argument
+          lua_createtable(lua, num_of_states, 0); //neighbor_counts argument
+          for(int i = 0; i < num_of_states; i++)//2 will be replaced by num of states
+          {
+            lua_pushinteger(lua, neighbor_counts[i]);
+            lua_rawseti(lua, -2, i);
+          }
+
+          if(checkLua(lua, lua_pcall(lua, 2, 1, 0)))
+          {
+            //top of the stack has the new state
+            if(lua_isnumber(lua, -1))
+            {
+              //makes sure the return value is a valid state
+              int new_state = (int)(lua_tonumber(lua, -1));
+              nextgrid[x][y] = ((new_state % num_of_states) + num_of_states) % num_of_states;
+              lua_pop(lua, 1);
+            }
+            else
+            {
+              std::cout << "Error reading result from process function!" << std::endl;
+            }
+          }
+          else
+          {
+            std::cout << "uhoh bad time" << std::endl;
+          }
+        }
+      }
     }
     //finsih update
     delta--;
@@ -184,7 +235,14 @@ void renderScene(void)
             camerax + lookx, cameray + looky, cameraz + lookz,
             upx            , upy            , upz);
 
+   //draw pointer for mouse
+  glColor3f((0xFF * (1 - ((double)currentState / (num_of_states - 1)))) / 255.0f,
+            (0xFF * (1 - ((double)currentState / (num_of_states - 1)))) / 255.0f,
+            (0xFF * (1 - ((double)currentState / (num_of_states - 1)))) / 255.0f);
+  drawCircle(mouseGlobalX, mouseGlobalY, 0, 5, 20);
+
   //draw grid
+  glColor3f(0.0f, 0.0f, 0.0f);
   for(int x = 0; x < cell_w + 1; x++)
   {
     for(int y = 0; y < cell_h + 1; y++)
@@ -204,16 +262,22 @@ void renderScene(void)
     }
   }
 
-  //color cells
-  glColor3f(0.9f, 0.9f, 0.9f);
-  glBegin(GL_TRIANGLES);
-    glVertex3f(-0.5, -0.5, 0.0);
-    glVertex3f(0.5, 0.0, 0.0);
-    glVertex3f(0.0, 0.5, 0.0);
+  //draw cells
+  glBegin(GL_QUADS);
+  for(int x = 0; x < cell_w; x++)
+  {
+    for(int y = 0; y < cell_h; y++)
+    {
+      glColor3f((0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))) / 255.0f,
+                (0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))) / 255.0f,
+                (0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))) / 255.0f);
+      glVertex3f(x * cell_size, y * cell_size, 0);
+      glVertex3f(x * cell_size, (y + 1) * cell_size, 0);
+      glVertex3f((x + 1) * cell_size, (y + 1) * cell_size, 0);
+      glVertex3f((x + 1) * cell_size, y * cell_size, 0);
+    }
+  }
   glEnd();
-
-  //draw pointer for mouse
-  drawCircle(0, 0, 0, 5, 20);
 
   glutSwapBuffers();
 }
@@ -221,7 +285,7 @@ void renderScene(void)
 //get crtl, shfft, alt with int mod = glutGetModifiers();
 void processNormalKeys(unsigned char key, int x, int y)
 {
-  std::cout << "Normal key event: " << (int)key << std::endl;
+  //std::cout << "Normal key event: " << (int)key << std::endl;
   switch(key){
     case 27:
       exit(0);
@@ -285,18 +349,20 @@ void processNormalKeysUp(unsigned char key, int x, int y)
 
 void processSpecialKeys(int key, int x, int y)
 {
-  std::cout << "special key event" << std::endl;
+  //std::cout << "special key event" << std::endl;
   switch(key)
   {
     case GLUT_KEY_RIGHT:
     case GLUT_KEY_UP:
       currentState = currentState + 1;
       if(currentState >= num_of_states) currentState = 0;
+      drawn = false;
       break;
     case GLUT_KEY_LEFT:
     case GLUT_KEY_DOWN:
       currentState = currentState - 1;
       if(currentState < 0) currentState = num_of_states - 1;
+      drawn = false;
       break;
     default:
       break;
@@ -319,7 +385,7 @@ void processMouse(int button, int state, int x, int y)
       }
       else if(button == 3 || button == 4)
       {
-        std::cout << "Scroll " << ((button == 3) ? "Up" : "Down") << std::endl;
+        //std::cout << "Scroll " << ((button == 3) ? "Up" : "Down") << std::endl;
         cameraz += ((button == 3) ? -cameraZoomSpeed : cameraZoomSpeed);
       }
       break;
@@ -340,27 +406,46 @@ void processMouse(int button, int state, int x, int y)
   }
 }
 
-//float* matrixMultiply(float* a, float* b)
-//{
-//
-//}
-
-//for with a button press
 void processMotion(int x, int y)
 {
   mousex = x;
   mousey = y;
 
-  //float proj[16];
-  //float view[16];
-  //glGetFloatv(GL_PROJECTION_MATRIX, proj);
-  //glGetFloatv(GL_MODELVIEW_MATRIX, view);
+  //calculates the mouse global coordinate location
+  GLint viewport[4];
+  GLdouble modelview[16];
+  GLdouble projection[16];
+  GLfloat winx, winy, winz;
+  GLdouble worx, wory, worz;
+  GLdouble worx1, wory1, worz1;
 
-  //float 
+  glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+  glGetDoublev(GL_PROJECTION_MATRIX, projection);
+  glGetIntegerv(GL_VIEWPORT, viewport);
 
-  mouseGlobalX = camerax + cameraz - mousex;
-  mouseGlobalY = cameray + ((win_height / win_width) * cameraz) - mousey;
-  //std::cout << x << ", " << y << std::endl;
+  winx = (float)x;
+  winy = (float)viewport[3] - (float)y - 1;
+
+  gluUnProject(winx, winy, 0.0f, modelview, projection, viewport, &worx, &wory, &worz);
+  gluUnProject(winx, winy, 1.0f, modelview, projection, viewport, &worx1, &wory1, &worz1);
+
+  float f = worz / (worz1 - worz);
+  mouseGlobalX = worx - f * (worx1 - worx);
+  mouseGlobalY = wory - f * (wory1 - wory);
+
+  if((mouseGlobalX >= 0 && mouseGlobalX < cell_w * cell_size) &&
+     (mouseGlobalY >= 0 && mouseGlobalY < cell_h * cell_size))
+  {
+    mouseGridX = floor(mouseGlobalX / cell_size);
+    mouseGridY = floor(mouseGlobalY / cell_size);
+  }
+  else
+  {
+    mouseGridX = -1;
+    mouseGridY = -1;
+  }
+  drawn = false;
+  //std::cout << winx << ", " << winy << "(" << mouseGlobalX << ", " << mouseGlobalY << ", " << worz << ")" << std::endl;
 }
 
 int main(int argc, char** argv)
