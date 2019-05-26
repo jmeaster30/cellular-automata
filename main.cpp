@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define _USE_MATH_DEFINES
+
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
@@ -51,6 +54,26 @@ bool step = false;
 bool drawing = false;
 bool drawn = false;
 
+//camera variables
+float camerax = 320;
+float cameray = 240;
+float cameraz = -500;
+
+float dx = 0;
+float dy = 0;
+float dz = 0;
+
+float cameraMoveSpeed = 1.0f;
+float cameraZoomSpeed = 2.0f;
+
+float lookx = 0;
+float looky = 0;
+float lookz = 1;
+
+float upx = 0;
+float upy = 1;
+float upz = 0;
+
 //timing variables
 std::chrono::steady_clock::time_point lastTime;
 double ns = 1000000000.0 / 60.0;
@@ -58,6 +81,10 @@ double delta = 0;
 
 int mousex = 0;
 int mousey = 0;
+
+float mouseGlobalX = 0.0f;
+float mouseGlobalY = 0.0f;
+float mouseGlobalZ = 0.0f;
 
 bool checkLua(lua_State* lua, int r)
 {
@@ -84,6 +111,23 @@ void changeSize(int w, int h)
   glMatrixMode(GL_MODELVIEW);
 }
 
+void drawCircle(float cx, float cy, float cz, float rad, int res)
+{
+
+  float twopi = 2 * M_PI;
+  float step = twopi / res;
+  glBegin(GL_TRIANGLE_FAN);
+    glVertex3f(cx, cy, cz);
+    for(float a = 0; a < twopi; a += step)
+    {
+      float x = cx + rad * cos(a);
+      float y = cy + rad * sin(a);
+      glVertex3f(x, y, cz);
+    }
+    glVertex3f(cx + rad, cy, cz);
+  glEnd();
+}
+
 void renderScene(void)
 {
   //update
@@ -93,6 +137,16 @@ void renderScene(void)
   while(delta >= 1)
   {
     //do update
+    //camera location
+    if(dx || dy || dz)
+    {
+      camerax += dx;
+      cameray += dy;
+      cameraz += dz;
+      if(cameraz > 0) cameraz = 0;
+      std::cout << camerax << ", " << cameray << ", " << cameraz << std::endl;
+    }
+
     //calculate grid location of the mouse
 
 
@@ -123,8 +177,13 @@ void renderScene(void)
   //render
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  //set the camera
+  //reset transformations
   glLoadIdentity();
+  //set the camera
+  gluLookAt(camerax        , cameray        , cameraz,
+            camerax + lookx, cameray + looky, cameraz + lookz,
+            upx            , upy            , upz);
+
   //draw grid
   for(int x = 0; x < cell_w + 1; x++)
   {
@@ -153,6 +212,9 @@ void renderScene(void)
     glVertex3f(0.0, 0.5, 0.0);
   glEnd();
 
+  //draw pointer for mouse
+  drawCircle(0, 0, 0, 5, 20);
+
   glutSwapBuffers();
 }
 
@@ -168,7 +230,7 @@ void processNormalKeys(unsigned char key, int x, int y)
       running = !running;
       std::cout << ((running) ? "Running" : "Stopped") << std::endl;
       break;
-    case 's':
+    case 'e':
       step = true;
       break;
     case 'c':
@@ -186,6 +248,35 @@ void processNormalKeys(unsigned char key, int x, int y)
           nextgrid[x][y] = (rand() % num_of_states);
         }
       }
+      break;
+    case 'w':
+      dy = cameraMoveSpeed;
+      break;
+    case 'a':
+      dx = cameraMoveSpeed;
+      break;
+    case 's':
+      dy = -cameraMoveSpeed;
+      break;
+    case 'd':
+      dx = -cameraMoveSpeed;
+      break;
+    default:
+      break;
+  }
+}
+
+void processNormalKeysUp(unsigned char key, int x, int y)
+{
+  switch(key)
+  {
+    case 'w':
+    case 's':
+      dy = 0;
+      break;
+    case 'a':
+    case 'd':
+      dx = 0;
       break;
     default:
       break;
@@ -229,6 +320,7 @@ void processMouse(int button, int state, int x, int y)
       else if(button == 3 || button == 4)
       {
         std::cout << "Scroll " << ((button == 3) ? "Up" : "Down") << std::endl;
+        cameraz += ((button == 3) ? -cameraZoomSpeed : cameraZoomSpeed);
       }
       break;
     case GLUT_UP:
@@ -240,6 +332,7 @@ void processMouse(int button, int state, int x, int y)
       else if(button == 3 || button == 4)
       {
         //std::cout << "Scroll " << ((button == 3) ? "Up" : "Down") << "Stopped" << std::endl;
+        //dz = 0;
       }
       break;
     default:
@@ -247,19 +340,26 @@ void processMouse(int button, int state, int x, int y)
   }
 }
 
+//float* matrixMultiply(float* a, float* b)
+//{
+//
+//}
+
 //for with a button press
 void processMotion(int x, int y)
 {
   mousex = x;
   mousey = y;
-  //std::cout << x << ", " << y << std::endl;
-}
 
-//for every other time
-void processPassiveMotion(int x, int y)
-{
-  mousex = x;
-  mousey = y;
+  //float proj[16];
+  //float view[16];
+  //glGetFloatv(GL_PROJECTION_MATRIX, proj);
+  //glGetFloatv(GL_MODELVIEW_MATRIX, view);
+
+  //float 
+
+  mouseGlobalX = camerax + cameraz - mousex;
+  mouseGlobalY = cameray + ((win_height / win_width) * cameraz) - mousey;
   //std::cout << x << ", " << y << std::endl;
 }
 
@@ -436,6 +536,8 @@ int main(int argc, char** argv)
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
   glutCreateWindow(win_title);
 
+  glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+
   //register callbacks
   glutDisplayFunc(renderScene);
   glutReshapeFunc(changeSize);
@@ -443,13 +545,14 @@ int main(int argc, char** argv)
 
   //keyboard and mouse events
   glutKeyboardFunc(processNormalKeys);
+  glutKeyboardUpFunc(processNormalKeysUp);
   glutSpecialFunc(processSpecialKeys);
   glutIgnoreKeyRepeat(1);
   glutSpecialUpFunc(processSpecialKeysUp);
 
   glutMouseFunc(processMouse);
   glutMotionFunc(processMotion);
-  glutPassiveMotionFunc(processPassiveMotion);
+  glutPassiveMotionFunc(processMotion);
 
   glEnable(GL_DEPTH_TEST);
 
