@@ -1,5 +1,10 @@
 win_title = "Conway's Game Of Life"
 
+cells_wide = 20
+cells_high = 20
+
+cell_size = 20
+
 function process(curr_state, neighbor_counts)
   local new_state = 0
 

@@ -553,6 +553,30 @@ int main(int argc, char** argv)
       cell_size = 20;
     }
 
+    if(lua_getglobal(lua, "cells_wide") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        cell_w = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'cells_wide'!" << std::endl;
+    }
+    else
+    {
+      cell_w = win_width / cell_size;
+    }
+
+    if(lua_getglobal(lua, "cells_high") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        cell_h = (int)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'cells_high'!" << std::endl;
+    }
+    else
+    {
+      cell_h = win_height / cell_size;
+    }
+
     if(lua_getglobal(lua, "num_of_states") != 0)
     {
       if(lua_isnumber(lua, -1))
@@ -594,9 +618,6 @@ int main(int argc, char** argv)
   {
     std::cout << "There was a problem loading the lua file :(" << std::endl;
   }
-
-  cell_w = win_width / cell_size;
-  cell_h = win_height / cell_size;
 
   //grid[x][y]
   //where 0 <= x <= cell_w

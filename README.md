@@ -10,7 +10,7 @@ Mouse Scroll - Zoom the camera in and out
 Left Click - Sets the cell that the mouse is over to the selected state
 C - sets every cell to state zero
 R - sets every cell to a random state
-S - performs the automaton calculation once
+E - performs the automaton calculation once
 Space - Starts and Stops the simulation
 ```
 
@@ -29,7 +29,9 @@ win_title = "Cellular Automata" -- the title of the window
 win_width = 640 -- the width in pixels of the window
 win_height = 480 -- the height in pixels of the window
 
-cell_size = 20 -- the width and height of one cell (you should make this a divisor of both win_width and win_height otherwise you will get a funky looking grid)
+cell_size = 20 -- the width and height of one cell
+cells_wide = win_width / cell_size --the width of the grid in cells
+cells_high = win_height / cell_size --the height of the grid in cells
 
 num_of_states = 2 -- the number of states each cell can be
 
@@ -47,11 +49,10 @@ Here is how it can look:
 
 function process(curr_state, neighbor_counts)
   local new_state = 0
-  
+
   --you can have anything you want in here
-  --as long as you return a number that represents a certain state 
-  
+  --as long as you return a number that represents a certain state
+
   return new_state
 end
 ```
-
