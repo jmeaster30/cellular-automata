@@ -590,6 +590,8 @@ int main(int argc, char** argv)
     }
     currentState = num_of_states - 1;
 
+    //get colors
+
     if(lua_getglobal(lua, "kernal_width") != 0)
     {
       if(lua_isnumber(lua, -1))
@@ -613,6 +615,31 @@ int main(int argc, char** argv)
     {
       kernal_height = 3;
     }
+
+    if(lua_getglobal(lua, "move_speed") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        cameraMoveSpeed = (float)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'move_speed'!" << std::endl;
+    }
+    else
+    {
+      cameraMoveSpeed = 2.0f;
+    }
+
+    if(lua_getglobal(lua, "zoom_speed") != 0)
+    {
+      if(lua_isnumber(lua, -1))
+        cameraZoomSpeed = (float)lua_tonumber(lua, -1);
+      else
+        std::cout << "Error reading in variable 'zoom_speed'!" << std::endl;
+    }
+    else
+    {
+      cameraZoomSpeed = 5.0f;
+    }
+
   }
   else
   {

@@ -5,6 +5,9 @@ cells_high = 20
 
 cell_size = 20
 
+move_speed = 2.0
+zoom_speed = 5.0
+
 function process(curr_state, neighbor_counts)
   local new_state = 0
 

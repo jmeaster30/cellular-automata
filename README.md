@@ -29,6 +29,9 @@ win_title = "Cellular Automata" -- the title of the window
 win_width = 640 -- the width in pixels of the window
 win_height = 480 -- the height in pixels of the window
 
+move_speed = 2.0 -- the movement speed of the camera
+zoom_speed = 5.0 -- the zoom speed of the camera
+
 cell_size = 20 -- the width and height of one cell
 cells_wide = win_width / cell_size --the width of the grid in cells
 cells_high = win_height / cell_size --the height of the grid in cells
