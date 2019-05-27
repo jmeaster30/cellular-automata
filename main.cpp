@@ -1,4 +1,4 @@
-#include <stdlib.h>
+kernel#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -40,14 +40,15 @@ int** nextgrid;
 
 int num_of_states;//default: 2
 
-int kernal_width;//default: 3
-int kernal_height;//default: 3
+int kernel_width;//default: 3
+int kernel_height;//default: 3
 
 //sim variables
 lua_State *lua;
 
 int currentState = 0;
 int* state_colors = nullptr;
+bool not_counts = false;
 
 bool running = false;
 bool step = false;
@@ -179,29 +180,63 @@ void renderScene(void)
         for(int y =  0; y < cell_h; y++)
         {
           //calculate neighbor numbers
-          int* neighbor_counts = (int*)malloc(sizeof(int) * num_of_states);//2 will be replaced by thenumber of states in the future
-          memset(neighbor_counts, 0, sizeof(int) * num_of_states);
-
-          int kxoff = -(kernal_width / 2);
-          int kyoff = -(kernal_height / 2);
-          for(int kx = 0; kx < kernal_width; kx++)
+          int* neighbor_counts = nullptr;
+          if(not_counts)
           {
-            for(int ky = 0; ky < kernal_height; ky++)
+            neighbor_counts = (int*)malloc(sizeof(int) * kernel_width * kernel_height);//2 will be replaced by thenumber of states in the future
+            memset(neighbor_counts, 0, sizeof(int) * kernel_width * kernel_height);
+
+            int kxoff = -(kernel_width / 2);
+            int kyoff = -(kernel_height / 2);
+            for(int kx = 0; kx < kernel_width; kx++)
             {
-              int ix = (((x + kx + kxoff) % cell_w) + cell_w) % cell_w; //probably unnecessary parentheses but it makes the order clear
-              int iy = (((y + ky + kyoff) % cell_h) + cell_h) % cell_h;
-              if(ix == x && iy == y) continue;//dont count cell we are looking at
-              neighbor_counts[grid[ix][iy]]++;
+              for(int ky = 0; ky < kernel_height; ky++)
+              {
+                int ix = (((x + kx + kxoff) % cell_w) + cell_w) % cell_w; //probably unnecessary parentheses but it makes the order clear
+                int iy = (((y + ky + kyoff) % cell_h) + cell_h) % cell_h;
+                neighbor_counts[ky * kernel_width + kx] = grid[ix][iy];
+              }
+            }
+          }
+          else
+          {
+            neighbor_counts = (int*)malloc(sizeof(int) * num_of_states);//2 will be replaced by thenumber of states in the future
+            memset(neighbor_counts, 0, sizeof(int) * num_of_states);
+
+            int kxoff = -(kernel_width / 2);
+            int kyoff = -(kernel_height / 2);
+            for(int kx = 0; kx < kernel_width; kx++)
+            {
+              for(int ky = 0; ky < kernel_height; ky++)
+              {
+                int ix = (((x + kx + kxoff) % cell_w) + cell_w) % cell_w; //probably unnecessary parentheses but it makes the order clear
+                int iy = (((y + ky + kyoff) % cell_h) + cell_h) % cell_h;
+                if(ix == x && iy == y) continue;//dont count cell we are looking at
+                neighbor_counts[grid[ix][iy]]++;
+              }
             }
           }
 
           lua_getglobal(lua, "process");
           lua_pushinteger(lua, grid[x][y]);//current state argument
-          lua_createtable(lua, num_of_states, 0); //neighbor_counts argument
-          for(int i = 0; i < num_of_states; i++)//2 will be replaced by num of states
+          if(not_counts)
           {
-            lua_pushinteger(lua, neighbor_counts[i]);
-            lua_rawseti(lua, -2, i);
+            //load neighbors
+            lua_createtable(lua, kernel_width * kernel_height, 0); //neighbor_counts argument
+            for(int i = 0; i < kernel_width * kernel_height; i++)//2 will be replaced by num of states
+            {
+              lua_pushinteger(lua, neighbor_counts[i]);
+              lua_rawseti(lua, -2, i);
+            }
+          }
+          else
+          {
+            lua_createtable(lua, num_of_states, 0); //neighbor_counts argument
+            for(int i = 0; i < num_of_states; i++)//2 will be replaced by num of states
+            {
+              lua_pushinteger(lua, neighbor_counts[i]);
+              lua_rawseti(lua, -2, i);
+            }
           }
 
           if(checkLua(lua, lua_pcall(lua, 2, 1, 0)))
@@ -493,8 +528,8 @@ int main(int argc, char** argv)
 
   num_of_states = 0;//default: 2
 
-  kernal_width = 0;//default: 3
-  kernal_height = 0;//default: 3
+  kernel_width = 0;//default: 3
+  kernel_height = 0;//default: 3
 
   lua = luaL_newstate();
   luaL_openlibs(lua);
@@ -512,6 +547,18 @@ int main(int argc, char** argv)
     else
     {
       win_title = "Cellular Automata";
+    }
+
+    if(lua_getglobal(lua, "get_neighbors") != 0)
+    {
+      if(lua_isboolean(lua, -1))
+        not_counts = lua_toboolean(lua, -1);
+      else
+        std::cout << "Error reading in variable 'get_neighbors'!" << std::endl;
+    }
+    else
+    {
+      not_counts = false;
     }
 
     if(lua_getglobal(lua, "updates_per_second") != 0)
@@ -631,28 +678,28 @@ int main(int argc, char** argv)
       state_colors = nullptr;
     }
 
-    if(lua_getglobal(lua, "kernal_width") != 0)
+    if(lua_getglobal(lua, "kernel_width") != 0)
     {
       if(lua_isnumber(lua, -1))
-        kernal_width = (int)lua_tonumber(lua, -1);
+        kernel_width = (int)lua_tonumber(lua, -1);
       else
-        std::cout << "Error reading in variable 'kernal_width'!" << std::endl;
+        std::cout << "Error reading in variable 'kernel_width'!" << std::endl;
     }
     else
     {
-      kernal_width = 3;
+      kernel_width = 3;
     }
 
-    if(lua_getglobal(lua, "kernal_height") != 0)
+    if(lua_getglobal(lua, "kernel_height") != 0)
     {
       if(lua_isnumber(lua, -1))
-        kernal_height = (int)lua_tonumber(lua, -1);
+        kernel_height = (int)lua_tonumber(lua, -1);
       else
-        std::cout << "Error reading in variable 'kernal_height'!" << std::endl;
+        std::cout << "Error reading in variable 'kernel_height'!" << std::endl;
     }
     else
     {
-      kernal_height = 3;
+      kernel_height = 3;
     }
 
     if(lua_getglobal(lua, "move_speed") != 0)

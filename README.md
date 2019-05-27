@@ -42,8 +42,10 @@ state_colors = {  -- the colors (in hex) of the state (low-high)
   "000000"
 }
 
-kernal_width = 3 -- the width of the kernal or neighborhood centered on the current cell
-kernal_height = 3 -- the height of the kernal or neighborhood centered on the current cell
+kernel_width = 3 -- the width of the kernel_width or neighborhood centered on the current cell
+kernel_height = 3 -- the height of the kernel or neighborhood centered on the current cell
+
+get_neighbors = false -- when false you get a lua array of the number of neighbors of each state. when true you get a 1d lua array of the entire kernel
 
 updates_per_second = 60 -- this controls how frequently the grid updates
 ```
