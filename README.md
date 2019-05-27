@@ -18,8 +18,9 @@ You need to pass in a lua script that has the parameters for the cellular automa
 ```
 conwaysgol.lua  -> implements the rules for Conway's Game of Life.
 brainsbrain.lua -> implements the rules for Brian's Brain.
-wireworld.lua   -> implements the rules for Wire World
-3staterules.lua -> implements the rules for a cellular automaton that I used for testing
+wireworld.lua   -> implements the rules for Wire World.
+langtonsant.lua -> implements the rules for Langton's Ant.
+3staterules.lua -> implements the rules for a cellular automaton that I used for testing.
 ```
 
 Your lua script can contain these variables but they aren't required (the values given are the default values):
