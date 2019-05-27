@@ -37,6 +37,10 @@ cells_wide = win_width / cell_size --the width of the grid in cells
 cells_high = win_height / cell_size --the height of the grid in cells
 
 num_of_states = 2 -- the number of states each cell can be
+state_colors = {  -- the colors (in hex) of the state (low-high)
+  "FFFFFF",       -- this array must have at least num_of_states number of elements
+  "000000"
+}
 
 kernal_width = 3 -- the width of the kernal or neighborhood centered on the current cell
 kernal_height = 3 -- the height of the kernal or neighborhood centered on the current cell

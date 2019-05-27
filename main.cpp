@@ -47,6 +47,7 @@ int kernal_height;//default: 3
 lua_State *lua;
 
 int currentState = 0;
+int* state_colors = nullptr;
 
 bool running = false;
 bool step = false;
@@ -241,9 +242,9 @@ void renderScene(void)
             upx            , upy            , upz);
 
    //draw pointer for mouse
-  glColor3f((0xFF * (1 - ((double)currentState / (num_of_states - 1)))) / 255.0f,
-            (0xFF * (1 - ((double)currentState / (num_of_states - 1)))) / 255.0f,
-            (0xFF * (1 - ((double)currentState / (num_of_states - 1)))) / 255.0f);
+   glColor3f(((state_colors[currentState] & 0xFF0000) >> 16) / 255.0f,
+             ((state_colors[currentState] & 0x00FF00) >> 8) / 255.0f,
+             (state_colors[currentState] & 0x0000FF) / 255.0f);
   drawCircle(mouseGlobalX, mouseGlobalY, 0, 5, 20);
 
   //draw grid
@@ -276,6 +277,16 @@ void renderScene(void)
       glColor3f((0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))) / 255.0f,
                 (0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))) / 255.0f,
                 (0xFF * (1 - ((double)grid[x][y] / (num_of_states - 1)))) / 255.0f);
+      if(state_colors == nullptr)
+      {
+        //std::cout << "grayscale" << std::endl;
+      }
+      else
+      {
+        glColor3f(((state_colors[grid[x][y]] & 0xFF0000) >> 16) / 255.0f,
+                  ((state_colors[grid[x][y]] & 0x00FF00) >> 8) / 255.0f,
+                  (state_colors[grid[x][y]] & 0x0000FF) / 255.0f);
+      }
       glVertex3f(x * cell_size, y * cell_size, 0);
       glVertex3f(x * cell_size, (y + 1) * cell_size, 0);
       glVertex3f((x + 1) * cell_size, (y + 1) * cell_size, 0);
@@ -591,6 +602,34 @@ int main(int argc, char** argv)
     currentState = num_of_states - 1;
 
     //get colors
+    if(lua_getglobal(lua, "state_colors") != 0)
+    {
+      state_colors = (int*)malloc(sizeof(int) * num_of_states);
+      memset(state_colors, 0, sizeof(int) * num_of_states);
+      for(int i = 0; i < num_of_states; i++)
+      {
+        //get value needed on the stack
+        std::string hexstring = "000000";
+        lua_rawgeti(lua, -1, i + 1);
+        if(lua_isstring(lua, -1))
+        {
+          hexstring = lua_tostring(lua, -1);
+          lua_pop(lua, 1);
+        }
+        else
+        {
+          std::cout << "Error reading in " << i << "th value of 'state_colors'!" << std::endl;
+        }
+        //convert hex string
+        int color = strtoul(hexstring.c_str(), NULL, 16);
+        *(state_colors + i) = color;
+        //std::cout << i << ":" << hexstring << "[" << color << "]" << std::endl;
+      }
+    }
+    else
+    {
+      state_colors = nullptr;
+    }
 
     if(lua_getglobal(lua, "kernal_width") != 0)
     {

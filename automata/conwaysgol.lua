@@ -5,6 +5,11 @@ cells_high = 20
 
 cell_size = 20
 
+state_colors = {
+  "FFFFFF",
+  "000000"
+}
+
 move_speed = 2.0
 zoom_speed = 5.0
 
